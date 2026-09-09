@@ -1,0 +1,4 @@
+import { sql } from '@vercel/postgres';
+import { initDb } from './db.js';
+function auth(req){return req.headers.authorization===`Bearer ${process.env.ADMIN_TOKEN}` && !!process.env.ADMIN_TOKEN;}
+export default async function handler(req,res){try{if(!auth(req))return res.status(401).json({error:'Unauthorized'});await initDb();if(req.method==='GET'){const r=await sql`SELECT * FROM orders ORDER BY created_at DESC`;return res.json(r.rows)}if(req.method==='PATCH'){const id=req.body?.id,status=req.body?.status;if(!id||!['Placed','Packed','Out for delivery','Delivered','Cancelled'].includes(status))return res.status(400).json({error:'Invalid request'});const r=await sql`UPDATE orders SET status=${status} WHERE id=${id} RETURNING *`;return res.json(r.rows[0])}return res.status(405).json({error:'Method not allowed'})}catch(e){res.status(500).json({error:'Server error'})}}
